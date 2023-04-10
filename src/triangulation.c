@@ -25,11 +25,18 @@ mesh2d* mesh2d_create(iso_vec3* vertices, u32 vertex_cnt, iso_color color) {
 	mesh->vertex_cnt = vertex_cnt;
 	mesh->color = color;
 
+	mesh->max_index_cnt = (mesh->vertex_cnt - 2) * 3;
+	mesh->index_cnt = 0;
+	mesh->indices = NULL;
+
+	mesh2d_calculate_indices(mesh);
+
 	return mesh;
 }
 
 void mesh2d_delete(mesh2d* mesh) {
 	iso_free(mesh->vertices);
+	iso_free(mesh->indices);
 	iso_free(mesh);
 }
 
@@ -178,12 +185,63 @@ void print_triangle(triangle tri) {
 				tri.c.x, tri.c.y, tri.c.z);
 }
 
-void mesh2d_generate_indices(mesh2d* mesh) {
-	triangle sup_tri = {
-		{  0.0f,  5.0f, 0.0f },
-		{ -5.0f, -5.0f, 0.0f },
-		{  5.0f, -5.0f, 0.0f }
+triangle generate_super_triangle(mesh2d* mesh) {
+	f32 min_x, min_y, max_x, max_y;
+	min_x = max_x = mesh->vertices[0].x;
+	min_y = max_y = mesh->vertices[0].y;
+
+	for (i32 i = 0; i < mesh->vertex_cnt; i++) {
+		iso_vec3 p = mesh->vertices[i];
+		if (min_x > p.x) min_x = p.x;
+		if (min_y > p.y) min_y = p.y;
+		if (max_x < p.x) max_x = p.x;
+		if (max_y < p.y) max_y = p.y;
+	}
+
+	f32 x1 = (min_x + max_x) * 0.5f;
+	f32 y1 = max_y + 5.0f;
+	f32 x2 = min_x - 5.0f;
+	f32 y2 = min_y - 5.0f;
+	f32 x3 = max_x + 5.0f;
+	f32 y3 = min_y - 5.0f;
+
+	return (triangle) {
+		.a = { x1, y1, 0.0f },
+		.b = { x2, y2, 0.0f },
+		.c = { x3, y3, 0.0f }
 	};
+}
+
+void mesh2d_add_vertex(mesh2d *mesh, iso_vec3 vertex) {
+	// Temp buffer
+	iso_vec3* tmp = iso_alloc(sizeof(iso_vec3) * mesh->vertex_cnt);
+	memcpy(tmp, mesh->vertices, sizeof(iso_vec3) * mesh->vertex_cnt);
+
+	mesh->vertex_cnt++;
+	mesh->max_index_cnt = (mesh->vertex_cnt - 2) * 3;
+
+	// Create new and copy from temp
+	iso_free(mesh->vertices);
+	mesh->vertices = iso_alloc(sizeof(iso_vec3) * mesh->vertex_cnt);
+	memcpy(mesh->vertices, tmp, sizeof(iso_vec3) * (mesh->vertex_cnt - 1));
+
+	// Adding new vertex
+	mesh->vertices[mesh->vertex_cnt - 1] = vertex;
+
+	iso_free(tmp);
+
+	// Recalculating indices
+	mesh2d_calculate_indices(mesh);
+}
+
+void mesh2d_calculate_indices(mesh2d* mesh) {
+	u32 st =  SDL_GetTicks();
+	triangle sup_tri = generate_super_triangle(mesh);
+	///triangle sup_tri = {
+	///	{ 0.0f, 5.0f, 0.0f },
+	///	{-5.0f,-5.0f, 0.0f },
+	///	{ 5.0f,-5.0f, 0.0f }
+	///};
 
 	triangle bad_triangles[1000];
 	i32 bad_tri_cnt = 0;
@@ -251,24 +309,32 @@ void mesh2d_generate_indices(mesh2d* mesh) {
 				if (res) break;
 			}
 			if (!res) {
+				//if (good_tri_cnt >= (mesh->vertex_cnt - 2)) break;
 				good_triangles[good_tri_cnt++] = tri;
 			}
 		}
 	}
 
 	// Generating indices
-	u32 indices[good_tri_cnt * 3];
-	i32 index_cnt = 0;
+	if (mesh->indices) {
+		iso_free(mesh->indices);
+		mesh->index_cnt = 0;
+	}
+	mesh->indices = iso_alloc(sizeof(u32) * mesh->max_index_cnt);
+	mesh->index_cnt = 0;
+
 	for (i32 i = 0; i < good_tri_cnt; i++) {
 		triangle tri = good_triangles[i];
 		i32 idx_a = mesh2d_search(mesh, tri.a);
 		i32 idx_b = mesh2d_search(mesh, tri.b);
 		i32 idx_c = mesh2d_search(mesh, tri.c);
-		indices[index_cnt++] = idx_a;
-		indices[index_cnt++] = idx_b;
-		indices[index_cnt++] = idx_c;
+
+		mesh->indices[mesh->index_cnt++] = idx_a;
+		mesh->indices[mesh->index_cnt++] = idx_b;
+		mesh->indices[mesh->index_cnt++] = idx_c;
 	}
 
+	/*
 	printf("----BAD TRIANGLES----\n");
 	for (i32 i = 0; i < bad_tri_cnt; i++) {
 		print_triangle(bad_triangles[i]);
@@ -281,9 +347,12 @@ void mesh2d_generate_indices(mesh2d* mesh) {
 	}
 	printf("----GOOD TRIANGLES----\n");
 
+	*/
+
+	mesh2d_print(mesh);
 	printf("----INDICES----\n");
-	for (i32 i = 0, j = 0; i < index_cnt; i++) {
-		printf("%d ", indices[i]);
+	for (i32 i = 0, j = 0; i < mesh->index_cnt; i++) {
+		printf("%d ", mesh->indices[i]);
 		j++;
 		if (j >= 3) {
 			printf("\n");
@@ -293,5 +362,9 @@ void mesh2d_generate_indices(mesh2d* mesh) {
 	printf("----INDICES----\n");
 	printf("Bad triangles count: %d\n", bad_tri_cnt);
 	printf("Triangles count: %d\n", good_tri_cnt);
+
+	u32 et = SDL_GetTicks();
+	u32 dt = et - st;
+	printf("Time taken: %dms\n", dt);
 }
 

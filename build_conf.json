@@ -5,7 +5,7 @@
     "out": "out",
     "cc": "gcc",
     "c_flags": [],
-    "c_files": ["src/main.c", "src/iso.c", "src/triangulation.c"],
+    "c_files": ["src/main.c", "src/iso.c", "src/triangulation.c", "src/renderer.c"],
     "includes": [],
     "lib_path": [],
     "lib": []

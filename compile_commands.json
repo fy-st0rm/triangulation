@@ -13,5 +13,10 @@
         "directory": "/home/st0rm/Documents/c_projects/learning_rendering/",
         "command": "gcc  -DISO_BUILD_DEBUG  -Iincludes/ -I/usr/include/ -Iisolate/includes -o /home/st0rm/Documents/c_projects/learning_rendering/src/triangulation.c.o -c /home/st0rm/Documents/c_projects/learning_rendering/src/triangulation.c",
         "file": "/home/st0rm/Documents/c_projects/learning_rendering/src/triangulation.c"
+    },
+    {
+        "directory": "/home/st0rm/Documents/c_projects/learning_rendering/",
+        "command": "gcc  -DISO_BUILD_DEBUG  -Iincludes/ -I/usr/include/ -Iisolate/includes -o /home/st0rm/Documents/c_projects/learning_rendering/src/renderer.c.o -c /home/st0rm/Documents/c_projects/learning_rendering/src/renderer.c",
+        "file": "/home/st0rm/Documents/c_projects/learning_rendering/src/renderer.c"
     }
 ]
